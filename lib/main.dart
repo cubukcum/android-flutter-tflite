@@ -8,7 +8,7 @@ import 'package:tflite_flutter/tflite_flutter.dart' as tfl;
 void main() {
   runApp(MyApp());
 }
-
+var myArray;
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -49,7 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Perform inference
     try {
-      _interpreter.run(blankImage, output);
+      _interpreter.run(myArray, output);
     } catch (e) {
       print('Error during inference: $e');
       return;
@@ -76,32 +76,85 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-
-
   int getColorForClass(int classIdx) {
     switch (classIdx) {
       case 0:
-        return img.getColor(255, 64, 42, 42); // Road
+        return img.getColor( 64, 42, 42); // Road
       case 1:
-        return img.getColor(255, 255, 0, 0); // Lane
+        return img.getColor( 255, 0, 0); // Lane
       case 2:
-        return img.getColor(255, 128, 128, 96); // Undrivable
+        return img.getColor(128, 128, 96); // Undrivable
       case 3:
-        return img.getColor(255, 0, 255, 102); // Movable
+        return img.getColor(0, 255, 102); // Movable
       case 4:
-        return img.getColor(255, 204, 0, 255); // Car
+        return img.getColor( 204, 0, 255); // Car
       default:
-        return img.getColor(255, 0, 0, 0); // Default to black
+        return img.getColor(0, 0, 0); // Default to black
     }
   }
 
-
   Future<void> loadImage() async {
+    // final ByteData data = await rootBundle.load('assets/input_image.png');
+    // final Uint8List bytes = Uint8List.view(data.buffer);
+    // _inputImage = img.decodeImage(bytes)!;
+    //
+    // // Resize the image to (256, 256)
+    // img.Image resizedImage = img.copyResize(_inputImage!, width: 256, height: 256);
+    //
+    // // Convert the resized image to a 1D list of pixels
+    // List<int> pixelValues = resizedImage.getBytes();
+    //
+    // // Create a blank array to hold the reshaped image
+    // var inputArray = List.filled(1 * 256 * 256 * 3, 0, growable: false);
+    //
+    // // Populate the inputArray with pixel values from the resized image
+    // int index = 0;
+    // for (int y = 0; y < 256; y++) {
+    //   for (int x = 0; x < 256; x++) {
+    //     inputArray[index++] = resizedImage.getPixel(x, y);
+    //   }
+    // }
+    //
+    // // Reshape the inputArray to match the desired shape (1, 256, 256, 3)
+    // myArray = inputArray.reshape([1, 256, 256, 3]);
+
     final ByteData data = await rootBundle.load('assets/input_image.png');
     final Uint8List bytes = Uint8List.view(data.buffer);
     _inputImage = img.decodeImage(bytes)!;
+
+    // Resize the image to (256, 256)
+    img.Image resizedImage = img.copyResize(_inputImage!, width: 256, height: 256);
+
+    // Normalize pixel values to be in the range [0, 1]
+    img.normalize(resizedImage, 0, 1);
+
+    // Convert the image to a 1D list of pixels
+    List<double> pixelValues = [];
+    for (int y = 0; y < 256; y++) {
+      for (int x = 0; x < 256; x++) {
+        int pixel = resizedImage.getPixel(x, y);
+        pixelValues.addAll([
+          img.getRed(pixel) / 255.0,
+          img.getGreen(pixel) / 255.0,
+          img.getBlue(pixel) / 255.0,
+        ]);
+      }
+    }
+
+    // Reshape the pixel values into a 4D array (1, 256, 256, 3)
+    List<double> inputArray = List.filled(1 * 256 * 256 * 3, 0);
+    for (int i = 0; i < pixelValues.length; i++) {
+      inputArray[i] = pixelValues[i];
+    }
+
+    // Print the shape of the input array
+    print(inputArray.shape); // Should print 196608
+  myArray = inputArray.reshape([1,256,256,3]);
+  print("myarray shape is ${inputArray.shape}");
+    // Perform inference
     performInference();
   }
+
 
   @override
   Widget build(BuildContext context) {
